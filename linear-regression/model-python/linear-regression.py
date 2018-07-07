@@ -25,7 +25,7 @@ session.run(tf.global_variables_initializer())
 # write shape of the graph
 tf.train.write_graph(graph_or_graph_def=session.graph_def,
                      logdir='.',
-                     name='linear_regression.pbtxt',
+                     name='linear_regression.pb',
                      as_text=False)
 
 loss_before_training = session.run(fetches=loss, feed_dict={x: x_train, y_input: y_train})

@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.tools import freeze_graph, optimize_for_inference_lib
 
 # Freeze graph and write it to frozen_linear_regression.pb
-freeze_graph.freeze_graph(input_graph='linear_regression.pbtxt',
+freeze_graph.freeze_graph(input_graph='linear_regression.pb',
                           input_saver='',
                           input_binary=True,
                           input_checkpoint='linear_regression.ckpt',
