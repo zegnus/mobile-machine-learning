@@ -1,4 +1,4 @@
-#Linear Regression
+# Linear Regression
 
 In this project we will build a simple linear regression graph in Tensorflow that we will later use to predict values from an Android application
 
@@ -52,7 +52,7 @@ y_train = [-1.0, -2.0, -3.0, -4.0]
 
 Now knowing all our defined placeholders, we can see that our `x_train` will be feed into the placeholder `x` and our `y_train` will be feed into the placeholder `y_input`. And this is why these two are **placeholders** and not variables.
 
-####Training model
+#### Training model
 
 In order to train a model we need to define two functions:
 
