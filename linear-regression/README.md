@@ -1,4 +1,4 @@
-#Linear Regression
+# Linear Regression
 
 In this project we will build a simple linear regression graph in Tensorflow that we will later use to predict values from an Android application
 
