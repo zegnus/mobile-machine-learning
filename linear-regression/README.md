@@ -29,7 +29,7 @@ b = tf.Variable(initial_value=[1.0], dtype=tf.float32, name='b')
 ```
 
 Now we have to define the last two crucial pieces of our model, our inputs and outputs. Let me explain a bit more this step. Our model is going to be _used_ in two different ways:
-1. While **training** we are going to perform a **supervised training**. Meaning that we need to working examples for inputs and outputs.
+1. While **training** we are going to perform a **supervised training**. Meaning that we need working examples for inputs and outputs.
 2. While **inference** we are going to **feed the model with input values**, and we will read output values predicted from our model.
 
 For inference, we have already defined our `y_output`, but for training we have to define our working examples fields. Looking at our `y_output` function, it needs an input `x`, let's define it:
@@ -155,16 +155,12 @@ saver.save(sess=session, save_path='./linear_regression.ckpt')
 ### Freeze and optimise the graph
 
 Once we have our graph definition and our checkpoint with all the final variables, we can freeze the graph so that it can be optimised and prepared for production use.
+- Our graph definition is serialised in **linear_regression.pb**
+- Our checkpoint with final variables is serialised in **linear_regression.ckpt**
+
+For freezing the graph we will need to feed a function with the definition of our graph, our checkpoint with all our trained variables and which output file we want to produce, in this case **frozen_linear_regression.pb**
 
 ```
-> graph definition at linear_regression.pb
-> checkpoint with final variables at linear_regression.ckpt
-```
-
-The code is a bit long but the important bits in the parameters are the location of the graph and the checkpoint for freezing the graph, and the name of our input and output placeholders `x` and `y_output`
-
-```
-# Freeze graph and write it to frozen_linear_regression.pb
 freeze_graph.freeze_graph(input_graph='linear_regression.pb',
                           input_saver='',
                           input_binary=True,
@@ -176,20 +172,29 @@ freeze_graph.freeze_graph(input_graph='linear_regression.pb',
                           clear_devices=True,
                           initializer_nodes='',
                           variable_names_blacklist='')
+```
 
-# Read frozen graph, optimize it and write it to optimized_frozen_linear_regression.pb
+Once we have our graph frozen we will optimize the graph for inference. This is a three step process. 
 
-# input_graph_def contains all the data from the pb file, converted into a String
+First we are going to load the frozen graph into memory
+
+```
 input_graph_def = tf.GraphDef()
 with tf.gfile.Open('frozen_linear_regression.pb', 'rb') as f:
     data = f.read()
     input_graph_def.ParseFromString(data)
+```
 
+Second we are going to feed a function with our in-memory frozen graph, the input node name and the output node name that we defined previously in our model. This is one of the reasons we named those nodes.
+
+```
 output_graph_def = optimize_for_inference_lib.optimize_for_inference(input_graph_def=input_graph_def,
                                                                      input_node_names=['x'],
                                                                      output_node_names=['y_output'],
                                                                      placeholder_type_enum=tf.float32.as_datatype_enum)
-
+```
+Third we will serialise the optimised graph:
+```
 f = tf.gfile.FastGFile(name='optimized_frozen_linear_regression.pb', mode='w')
 
 f.write(file_content=output_graph_def.SerializeToString())
@@ -210,7 +215,61 @@ We are going to need:
 
 ### Tensorflow libraries for Android
 
-// todo
+It used to be very complex to use Tensorflow on Android because the library is written in C++, you use to had to build the libraries and create the JNI layer between Java and C++. You can still do so if you want and it might actually be beneficial for your project; building the libraries yourself can reduce the size of the libraries as you can target it for your specific model just compiling what you really need and also you can target the selected mobile architectures that you desire.
+
+But for this example we will use the latest invention from Google, released on 2017. We can now import the library with just one line of code in your `/app/build.grade dependencies{...}` file:
+
+```
+implementation 'org.tensorflow:tensorflow-android:1.8.0'
+```
+
+Once we got the library, we can directly use the Java interface `TensorFlowInferenceInterface` provided by `import org.tensorflow.contrib.android.TensorFlowInferenceInterface;`
+
+We are then going to copy of optimised graph into the `/app/src/main/assets` folder in our Android project
 
 ### Import the frozen graph and use it to make predictions
-// todo 
+
+Now we need to define some values from our model:
+- The name of our input node from the graph
+- The name of our output node from the graph
+- The shape of our input
+- The path to our model
+
+```
+private static final String MODEL_NAME = "file:///android_asset/optimized_frozen_linear_regression.pb";
+private static final String INPUT_NODE = "x";
+private static final String OUTPUT_NODE = "y_output";
+private static final long[] INPUT_SHAPE = {1L, 1L};
+```
+
+Once we have everything defined we are going to create an instance of the Tensorflow inference interface:
+```
+tensorFlowInferenceInterface = new TensorFlowInferenceInterface(getAssets(), MODEL_NAME);
+```
+
+We now have everything in place for using our model and start predicting values. Once we have an input value (that can come from an EditText in our Android application) we will feed our inference with it, we will run it and then we will read the result.
+
+- Feed our inference model:
+```
+float[] floatArray = {input};
+tensorFlowInferenceInterface.feed(INPUT_NODE, floatArray, INPUT_SHAPE);
+```
+
+- Run the inference:
+```
+tensorFlowInferenceInterface.run(new String[] {OUTPUT_NODE});
+```
+
+- Extract the results:
+```
+float[] results = {0.0f};
+tensorFlowInferenceInterface.fetch(OUTPUT_NODE, results);
+```
+
+Our value will be at `results[0]` as we know there is only one output for our input (also highlighted in our input shape)
+
+And that is it! You have created from zero a model and you have end up using it in an Android application, remember that all the code can be found in my [GitHub repository](https://github.com/zegnus/mobile-machine-learning/tree/master/linear-regression)
+
+Next chapters we will take more complex models and problems.
+
+See you next time
