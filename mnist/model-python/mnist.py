@@ -25,13 +25,24 @@ cross_entropy_loss = tf.reduce_mean(
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.5, name='optimizer')
 train_step = optimizer.minimize(loss=cross_entropy_loss, name='train_step')
 
+saver = tf.train.Saver()
+
 session = tf.InteractiveSession()
 session.run(tf.global_variables_initializer())
+
+tf.train.write_graph(graph_or_graph_def=session.graph_def,
+                     logdir=".",
+                     name="mnist_model.pb",
+                     as_text=False)
 
 for _ in range(1000):
     # we have 60k images, we will split them onto batches
     batch = mnist_data.train.next_batch(100)
     train_step.run(feed_dict={x_input: batch[0], y_input: batch[1]})
+
+
+saver.save(sess=session,
+           save_path="./mnist_model.ckpt")
 
 correct_prediction = tf.equal(x=tf.argmax(y, 1), y=tf.argmax(y_input, 1))
 accuracy = tf.reduce_mean(tf.cast(x=correct_prediction, dtype=tf.float32))  # zero or one
